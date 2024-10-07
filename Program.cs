@@ -1,81 +1,90 @@
-﻿// Importing the System Namespace, which contains fundamental classes like Console, String, etc.
 using System;
-using System.Buffers;
-using CalculatorApp;
-#nullable disable
+using System.Data; // Required for using DataTable.Compute for expression evaluation.
 
-// Defining a namespace for the calculator app
-// A namespace is a way to group related classes together
-namespace Calculator
+namespace CalculatorApp
 {
-    // This is the main class where the program starts
-    // The class is called "Program".
     class Program
     {
-        // The Main method is the entry point of the program
-        // It is automatically called when the program starts
         static void Main(string[] args)
         {
-            // Displaying a message to the user
-            Console.WriteLine("Simple Calculator App");
-
-            // Prompting the user to enter the first number
-            // Console.ReadLine() reads the user's input as a string.
-            // Convert.ToDouble() converts the string to a double (a number that can have decimals).
-            Console.WriteLine("Enter the first number: ");
-            double num1 = Convert.ToDouble(Console.ReadLine());
-
-            // Prompting the user to enter the operator (+, -, *, /, %)
-            // The operator is a string that determines which operation to perform
-            Console.WriteLine("Enter the operator (+, -, *, /, %): ");
-            string operation = Console.ReadLine();
-
-            // Prompting the user to enter the second number
-            // Again, the input is read as a string and converted to a double
-            Console.WriteLine("Enter the second number: ");
-            double num2 = Convert.ToDouble(Console.ReadLine());
-
-            // Variable to store the result of the operation
-            double result = 0.0;
-
-            // A switch statement to choose the operation based on the user's input.
-            // The switch checks the value of 'operation' and calls the corresponding method from the Operations Class
-            switch (operation)
+            // This is the REPL (Read-Eval-Print Loop)
+            while (true)
             {
-                case "+":
-                    // Calling the Add Method from the Operations Class
-                    result = Operations.Add(num1, num2);
-                    break;
+                Console.Clear(); // Clears the console for a fresh start each loop.
+                Console.WriteLine("Type an expression (or 'exit' to quit):");
 
-                case "-":
-                    // Calling the Subtract Method from the Operations Class
-                    result = Operations.Subtract(num1, num2);
-                    break;
+                string expression = ""; // To store the user's input.
+                double ghostResult = 0; // The live result shown underneath the input line.
 
-                case "*":
-                    // Calling the Multiply Method from the Operations Class
-                    result = Operations.Multiply(num1, num2);
-                    break;
+                // Read user input character by character for the ghost result.
+                ConsoleKeyInfo key;
+                do
+                {
+                    key = Console.ReadKey(intercept: true); // Read a key without printing it (intercept = true).
 
-                case "/":
-                    // Calling the Divide Method from the Operations Class
-                    result = Operations.Divide(num1, num2);
-                    break;
+                    // Handle if the user presses Enter to evaluate the expression.
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        Console.WriteLine(); // Move to the next line after Enter.
+                        break; // Exit the do-while loop to evaluate the expression.
+                    }
 
-                case "%":
-                    // Calling the Modulo Method from the Operations Class
-                    result = Operations.Modulo(num1, num2);
-                    break;
+                    // Handle if the user presses Backspace to remove characters from the expression.
+                    if (key.Key == ConsoleKey.Backspace && expression.Length > 0)
+                    {
+                        expression = expression.Substring(0, expression.Length - 1); // Remove last character.
+                        Console.Write("\b \b"); // Visually erase last character on console.
+                    }
+                    // Ignore any control keys that are not relevant for the input (like Arrow keys, etc.).
+                    else if (!char.IsControl(key.KeyChar))
+                    {
+                        expression += key.KeyChar; // Add the typed character to the expression.
+                        Console.Write(key.KeyChar); // Print the character to the console.
+                    }
 
-                default:
-                    // If the user enters an invalid operator, display an error message
-                    Console.WriteLine("Invalid operator");
+                    // Try to calculate the ghost result every time the user types something.
+                    ghostResult = TryEvaluateExpression(expression);
+
+                    // Show the ghost result in real-time underneath the expression.
+                    Console.SetCursorPosition(0, Console.CursorTop + 1); // Move cursor to the next line.
+                    Console.Write($"Ghost result: {ghostResult}");
+
+                    // Move cursor back to the input line.
+                    Console.SetCursorPosition(expression.Length, Console.CursorTop - 1);
+                } while (true);
+
+                // When the user presses Enter, evaluate the final expression and print the result.
+                if (expression.ToLower() == "exit")
+                {
+                    // Exit the REPL loop if the user types "exit".
                     break;
+                }
+
+                // Calculate the final result of the entered expression.
+                double finalResult = TryEvaluateExpression(expression);
+                Console.WriteLine($"\nFinal result: {finalResult}");
+
+                // Pause before restarting the loop.
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
             }
+        }
 
-            // Displaying the result of the calculation
-            // If an invalid operator was entered, result will remain 0
-            Console.WriteLine($"Result: {result}");
+        // This method attempts to evaluate the expression using DataTable.Compute.
+        public static double TryEvaluateExpression(string expression)
+        {
+            try
+            {
+                // Using DataTable to compute the expression.
+                DataTable table = new DataTable();
+                var result = table.Compute(expression, ""); // Evaluate the expression.
+                return Convert.ToDouble(result); // Convert the result to a double and return it.
+            }
+            catch
+            {
+                // If an error occurs (like invalid input), return 0 as a default ghost result.
+                return 0;
+            }
         }
     }
 }
